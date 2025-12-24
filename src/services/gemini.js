@@ -61,19 +61,24 @@ const fetchWithTimeout = (url, options, timeoutMs = 15000) => {
 /**
  * Robust Gemini API call with 429 handling and backoff
  */
-const callGeminiWithRetry = async (prompt, apiKey, model, maxRetries = 3) => {
+const callGeminiWithRetry = async (prompt, apiKey, model, maxRetries = 3, systemMessage = null) => {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
   
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
+      const contents = [];
+      if (systemMessage) {
+        // Gemini accepts role 'model' for system-style instructions
+        contents.push({ role: 'model', parts: [{ text: systemMessage }] });
+      }
+      contents.push({ role: 'user', parts: [{ text: prompt }] });
+
       const response = await fetchWithTimeout(
         url,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          }),
+          body: JSON.stringify({ contents }),
         },
         15000 // 15 second timeout
       );
@@ -104,7 +109,9 @@ const callGeminiWithRetry = async (prompt, apiKey, model, maxRetries = 3) => {
 /**
  * OpenAI call (for users with sk- keys)
  */
-const callOpenAI = async (prompt, apiKey) => {
+const callOpenAI = async (prompt, apiKey, systemMessage = null) => {
+  const messages = systemMessage ? [{ role: 'system', content: systemMessage }, { role: 'user', content: prompt }] : [{ role: 'user', content: prompt }];
+
   const response = await fetchWithTimeout(
     'https://api.openai.com/v1/chat/completions',
     {
@@ -115,7 +122,7 @@ const callOpenAI = async (prompt, apiKey) => {
       },
       body: JSON.stringify({
         model: OPENAI_MODEL,
-        messages: [{ role: 'user', content: prompt }],
+        messages,
         temperature: 0.4,
       }),
     },
@@ -179,5 +186,60 @@ export const getFinancialInsights = async (data, overrideKey, modelOverride) => 
     return `AI Error: ${error.message}`;
   } finally {
     isRequesting = false;
+  }
+};
+
+// Short system instruction for chat usage
+const SYSTEM_MESSAGE = `You are a concise, helpful personal finance assistant. Be mindful of the user's base currency and formatting. Provide short, actionable answers and ask clarifying questions if necessary.`;
+
+/**
+ * Build a contextual system prompt for chat using user data
+ */
+export const buildContextualPrompt = (data, userMessage) => {
+  const context = buildPrompt(data);
+  return {
+    systemMessage: `Context:\n${context}`,
+    userMessage,
+  };
+};
+
+/**
+ * Send a plain chat prompt (no contextual data)
+ */
+export const sendPrompt = async (text, overrideKey) => {
+  const apiKey = overrideKey || (await loadApiKey());
+  if (!apiKey) return 'Add an AI API key to use the assistant.';
+  try {
+    if (apiKey.toLowerCase().startsWith('sk-')) {
+      return await callOpenAI(text, apiKey, SYSTEM_MESSAGE);
+    } else {
+      const model = (await loadAiModel()) || GEMINI_DEFAULT;
+      return await callGeminiWithRetry(text, apiKey, model, 3, SYSTEM_MESSAGE);
+    }
+  } catch (err) {
+    console.error('sendPrompt failed:', err);
+    return `AI Error: ${err.message}`;
+  }
+};
+
+/**
+ * Send a chat prompt with contextual user data included as a system message
+ */
+export const sendContextualPrompt = async (data, userText, overrideKey) => {
+  const apiKey = overrideKey || (await loadApiKey());
+  if (!apiKey) return 'Add an AI API key to use the assistant.';
+
+  const { systemMessage, userMessage } = buildContextualPrompt(data, userText);
+
+  try {
+    if (apiKey.toLowerCase().startsWith('sk-')) {
+      return await callOpenAI(userMessage, apiKey, `${SYSTEM_MESSAGE}\n\n${systemMessage}`);
+    } else {
+      const model = (await loadAiModel()) || GEMINI_DEFAULT;
+      return await callGeminiWithRetry(userMessage, apiKey, model, 3, `${SYSTEM_MESSAGE}\n\n${systemMessage}`);
+    }
+  } catch (err) {
+    console.error('sendContextualPrompt failed:', err);
+    return `AI Error: ${err.message}`;
   }
 };

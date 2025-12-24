@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { View, Text, ScrollView, TextInput, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, ScrollView, TextInput, TouchableOpacity, Alert, Switch } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -8,18 +8,20 @@ import { fetchExchangeRates } from '../services/exchange';
 import { saveAiModel, loadAiModel, loadApiKey, removeApiKey } from '../storage';
 import { persistApiKey } from '../services/gemini';
 
-const Settings = ({ data, onUpdateBaseCurrency, onUpdateExchangeRates, onFetchRates }) => {
+const Settings = ({ data, onUpdateBaseCurrency, onUpdateExchangeRates, onFetchRates, onUpdateAutoDetectCurrency }) => {
   const insets = useSafeAreaInsets();
   const [baseCurrency, setBaseCurrency] = useState(data.baseCurrency);
   const [rates, setRates] = useState(() => data.exchangeRates || {});
   const [aiModel, setAiModel] = useState('gemini-1.5-flash');
   const [apiKey, setApiKey] = useState('');
   const [apiSaved, setApiSaved] = useState(false);
+  const [autoDetect, setAutoDetect] = useState(!!data.autoDetectCurrency);
 
   useEffect(() => {
     setBaseCurrency(data.baseCurrency);
     setRates(data.exchangeRates || {});
-  }, [data.baseCurrency, data.exchangeRates]);
+    setAutoDetect(!!data.autoDetectCurrency);
+  }, [data.baseCurrency, data.exchangeRates, data.autoDetectCurrency]);
 
   useEffect(() => {
     const loadModel = async () => {
@@ -48,6 +50,7 @@ const Settings = ({ data, onUpdateBaseCurrency, onUpdateExchangeRates, onFetchRa
   );
 
   const handleSave = async () => {
+    if (onUpdateAutoDetectCurrency) onUpdateAutoDetectCurrency(autoDetect);
     onUpdateBaseCurrency(baseCurrency);
     onUpdateExchangeRates(rates);
     await saveAiModel(aiModel);
@@ -107,20 +110,32 @@ const Settings = ({ data, onUpdateBaseCurrency, onUpdateExchangeRates, onFetchRa
           gap: 10,
         }}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <Ionicons name="globe" size={18} color="#4f46e5" />
-          <Text style={{ fontWeight: '800', color: '#111827' }}>Base Currency</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Ionicons name="globe" size={18} color="#4f46e5" />
+            <Text style={{ fontWeight: '800', color: '#111827' }}>Base Currency</Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text style={{ fontSize: 12, color: '#6b7280' }}>Auto-detect</Text>
+            <Switch value={autoDetect} onValueChange={(v) => {
+              setAutoDetect(v);
+              if (onUpdateAutoDetectCurrency) onUpdateAutoDetectCurrency(v);
+            }} />
+          </View>
         </View>
+
         <Picker
+          enabled={!autoDetect}
           selectedValue={baseCurrency}
           onValueChange={(val) => setBaseCurrency(val)}
-          style={{ backgroundColor: '#f9fafb', borderRadius: 12 }}
+          style={{ backgroundColor: autoDetect ? '#f3f4f6' : '#f9fafb', borderRadius: 12 }}
         >
           {CurrencyCodes.map((code) => {
             const curr = CURRENCIES[code];
             return <Picker.Item key={code} label={`${curr.code} - ${curr.name}`} value={code} />;
           })}
         </Picker>
+        {autoDetect && <Text style={{ fontSize: 12, color: '#9ca3af' }}>Base currency is auto-detected from your device locale.</Text>}
       </View>
 
       <View

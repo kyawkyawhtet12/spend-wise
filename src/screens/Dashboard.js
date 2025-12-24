@@ -4,6 +4,7 @@ import { BarChart } from 'react-native-chart-kit';
 import { Picker } from '@react-native-picker/picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useNavigation } from '@react-navigation/native';
 import SummaryCard from '../components/SummaryCard';
 import { CURRENCIES } from '../types';
 import { convertAmount } from '../services/exchange';
@@ -18,6 +19,9 @@ const Dashboard = ({ data, onUpdateSalary, onUpdateBaseCurrency, onAddTransactio
   const [toastVisible, setToastVisible] = useState(false);
   const insets = useSafeAreaInsets();
   const screenWidth = Dimensions.get('window').width - 48;
+  const navigation = useNavigation();
+
+
 
   const showToast = (msg, duration = 3000) => {
     setToast(msg);
@@ -303,6 +307,8 @@ const handleGetInsight = async () => {
           </View>
         </View>
       )}
+
+
     </ScrollView>
   );
 };
