@@ -47,10 +47,11 @@ const Settings = ({ data, onUpdateBaseCurrency, onUpdateExchangeRates, onFetchRa
     [baseCurrency],
   );
 
-  const handleSave = () => {
+  const handleSave = async () => {
     onUpdateBaseCurrency(baseCurrency);
     onUpdateExchangeRates(rates);
-    saveAiModel(aiModel);
+    await saveAiModel(aiModel);
+    Alert.alert('Saved', 'Currency, rates, and AI model saved.');
   };
 
   const handleFetch = async () => {
@@ -145,6 +146,7 @@ const Settings = ({ data, onUpdateBaseCurrency, onUpdateExchangeRates, onFetchRa
           <Picker.Item label="Gemini 1.5 Flash" value="gemini-1.5-flash" />
           <Picker.Item label="Gemini 1.5 Flash 001 (compat)" value="gemini-1.5-flash-001" />
           <Picker.Item label="Gemini 2.0 Flash" value="gemini-2.0-flash" />
+          <Picker.Item label="Gemini 2.5 Flash Lite" value="gemini-2.5-flash-lite" />
           <Picker.Item label="Gemini 1.5 Flash 8B (lite)" value="gemini-1.5-flash-8b" />
         </Picker>
         <Text style={{ fontSize: 12, color: '#6b7280' }}>
@@ -307,7 +309,7 @@ const Settings = ({ data, onUpdateBaseCurrency, onUpdateExchangeRates, onFetchRa
           shadowOffset: { width: 0, height: 3 },
         }}
       >
-        <Text style={{ color: 'white', fontWeight: '800' }}>Save Currency & Rates</Text>
+        <Text style={{ color: 'white', fontWeight: '800' }}>Save Currency & Rates & AI Model</Text>
       </TouchableOpacity>
     </ScrollView>
   );

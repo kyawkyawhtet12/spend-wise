@@ -1,7 +1,7 @@
 import { saveApiKey, loadApiKey, loadAiModel } from '../storage';
 
-// 1. Updated to the latest 2.0 model for better availability
-const GEMINI_DEFAULT = 'gemini-2.0-flash';
+// Default Gemini model (updated to 2.5 Flash Lite)
+const GEMINI_DEFAULT = 'gemini-2.5-flash-lite';
 const OPENAI_MODEL = 'gpt-4o-mini';
 
 // Throttling: Prevents calling the API more than once every 2 seconds
